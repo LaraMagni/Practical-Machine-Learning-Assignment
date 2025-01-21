@@ -1,0 +1,117 @@
+---
+title: "Practical Machine Learning- Assignment"
+author: "LM"
+date: "2025-01-21"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+## Background
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways.
+ 
+## Data
+The training data for this project are available here:
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here:
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+The data for this project come from this source: 
+http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har
+
+## Assignment
+The goal of your project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. You may use any of the other variables to predict with. You should create a report describing how you built your model, how you used cross validation, what you think the expected out of sample error is, and why you made the choices you did. You will also use your prediction model to predict 20 different test cases.
+
+## Loading and cleaning Data
+
+```{r setup, echo=TRUE}
+library(ggplot2)
+library(lattice)
+library(caret)
+library(kernlab)
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+library(knitr)
+```
+
+```{r Data, echo=TRUE, results="hide"}
+
+#Load the data
+trainingA <- read.csv("pml-training.csv")
+testingA <- read.csv("pml-testing.csv")
+
+#Explore the data
+dim(testingA)
+dim(trainingA)
+head(trainingA, 5)
+```
+
+Missing values and variables with near zero variance should be removed as well as columns that are not predictors (1:7).
+
+```{r Data_cleaning, echo=TRUE}
+
+#Delete missing values
+trainingA <- read.csv("pml-training.csv", na.strings = c("NA", "#DIV/0", ""))
+testingA <- read.csv("pml-testing.csv", na.strings = c("NA", "#DIV/0", ""))
+
+#Delete columns with near zero variance
+trainingA<-trainingA[,colSums(is.na(trainingA)) == 0]
+testingA <-testingA[,colSums(is.na(testingA)) == 0]
+
+#Remove first 7 columns that are not predictors
+trainingA <-trainingA[,-c(1:7)]
+testingA <-testingA[,-c(1:7)]
+
+dim(trainingA)
+dim(testingA)
+```
+
+## Create a data partition using the "trainingA" dataset.
+Now, the data will be divided 75% in the training group and 25% in the testing group.
+
+```{r Data_partition, echo=TRUE}
+set.seed(1000)
+
+Part <- createDataPartition(trainingA$classe, p=0.75, list=FALSE)
+training <- trainingA[Part, ]
+testing <- trainingA[-Part, ]
+
+dim(training)
+dim(testing)
+
+training$classe <- as.factor(training$classe)
+testing$classe <- as.factor(testing$classe)
+```
+
+## Prediction Models
+Two prediction models, decision tree and random forest will be evaluated. The best model will be selected based on the value of accuracy.
+
+### Decision Tree
+
+```{r Prediction_models, echo=TRUE}
+Tree <- rpart(classe~., data=training, method="class")
+rpart.plot(Tree)
+
+prediction_Tree <- predict(Tree, testing, type="class")
+confusionMatrix(prediction_Tree, testing$classe) 
+```
+
+### Random Forest
+```{r Random_Forest, echo=TRUE}
+RF <- randomForest(classe~., data=training)
+RF
+predict_RF <- predict(RF, testing)
+confusionMatrix(predict_RF, testing$classe)
+```
+
+## Conclusion
+The Estimated Accuracy of the decision tree is 0.7484 (74.84%) and the Estimated Out-of-Sample Error is calculated as 1-accuracy and therefore results in 0.2516 (25.16%) . The Estimated Accuracy of the Random Forest Model is 0.9957 (99.57%) and the Estimated Out-of-Sample Error is 0.0046 (0.46%).Therefore, the Random Forest is the best model.
+
+## Prediction of the original testing dataset, "testingA"
+
+```{r test, echo=TRUE}
+prediction_test <- predict(RF, testingA)
+prediction_test
+```
